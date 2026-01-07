@@ -19,7 +19,7 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 1400px;
             margin: 0 auto;
             background: white;
             border-radius: 20px;
@@ -155,6 +155,175 @@
             font-weight: 600;
         }
 
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            margin: 0;
+        }
+
+        .tab:hover {
+            transform: none;
+            box-shadow: none;
+            color: #667eea;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .csv-upload {
+            text-align: center;
+            padding: 40px;
+            border: 2px dashed #e0e0e0;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+
+        .csv-upload:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .csv-upload input[type="file"] {
+            display: none;
+        }
+
+        .csv-upload label {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .csv-upload label:hover {
+            transform: translateY(-2px);
+        }
+
+        .csv-upload p {
+            margin-top: 15px;
+            color: #666;
+        }
+
+        .pagination-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .pagination-controls label {
+            margin: 0;
+            margin-right: 10px;
+        }
+
+        .pagination-controls select {
+            width: auto;
+            padding: 8px 12px;
+        }
+
+        .pagination-info {
+            color: #666;
+            font-weight: 600;
+        }
+
+        .pagination-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .pagination-buttons button {
+            padding: 8px 16px;
+            margin: 0;
+            font-size: 0.9em;
+        }
+
+        .results-table {
+            width: 100%;
+            overflow-x: auto;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        table {
+            width: 100%;
+            min-width: 1200px;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            white-space: nowrap;
+            font-size: 0.9em;
+        }
+
+        td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #e0e0e0;
+            white-space: nowrap;
+            font-size: 0.9em;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .prediction-cell {
+            font-weight: 600;
+        }
+
+        .prediction-high {
+            color: #28a745;
+        }
+
+        .prediction-low {
+            color: #ffc107;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
         @media (max-width: 768px) {
             .form-grid {
                 grid-template-columns: 1fr;
@@ -167,6 +336,19 @@
             h1 {
                 font-size: 2em;
             }
+
+            .pagination-controls {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .results-table {
+                font-size: 0.85em;
+            }
+
+            th, td {
+                padding: 8px;
+            }
         }
     </style>
 </head>
@@ -175,7 +357,13 @@
         <h1>Salary Prediction</h1>
         <p class="subtitle">Predict if annual income exceeds $50K</p>
 
-        <form id="predictionForm">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('single')">Single Prediction</button>
+            <button class="tab" onclick="switchTab('batch')">Batch Prediction (CSV)</button>
+        </div>
+
+        <div id="singleTab" class="tab-content active">
+            <form id="predictionForm">
             <div class="form-grid">
                 <div class="form-group">
                     <label for="age">Age</label>
@@ -306,9 +494,69 @@
             </div>
         </form>
 
-        <div class="loading" id="loading">Processing...</div>
+            <div class="loading" id="loading">Processing...</div>
 
-        <div class="result" id="result"></div>
+            <div class="result" id="result"></div>
+        </div>
+
+        <div id="batchTab" class="tab-content">
+            <div class="csv-upload">
+                <input type="file" id="csvFile" accept=".csv" onchange="handleFileUpload(event)">
+                <label for="csvFile">Choose CSV File</label>
+                <p>Upload a CSV file with the required columns for batch predictions</p>
+                <p style="font-size: 0.9em; margin-top: 10px;">Required columns: age, workclass, education, educational-num, marital-status, occupation, relationship, race, gender, capital-gain, capital-loss, hours-per-week, native-country</p>
+            </div>
+
+            <div class="loading" id="batchLoading" style="display: none;">Processing CSV file...</div>
+
+            <div id="resultsContainer" style="display: none;">
+                <div class="pagination-controls">
+                    <div>
+                        <label for="itemsPerPage">Items per page:</label>
+                        <select id="itemsPerPage" onchange="changeItemsPerPage()">
+                            <option value="10">10</option>
+                            <option value="25" selected>25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                    <div class="pagination-info" id="paginationInfo"></div>
+                    <div class="pagination-buttons">
+                        <button onclick="previousPage()">Previous</button>
+                        <button onclick="nextPage()">Next</button>
+                    </div>
+                </div>
+
+                <div class="results-table">
+                    <table id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Age</th>
+                                <th>Workclass</th>
+                                <th>Education</th>
+                                <th>Occupation</th>
+                                <th>Gender</th>
+                                <th>Hours/Week</th>
+                                <th>Prediction</th>
+                                <th>Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsBody">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination-controls">
+                    <div></div>
+                    <div class="pagination-info" id="paginationInfo2"></div>
+                    <div class="pagination-buttons">
+                        <button onclick="previousPage()">Previous</button>
+                        <button onclick="nextPage()">Next</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -401,6 +649,133 @@
                 loading.style.display = 'none';
             }
         });
+
+        // Batch prediction functionality
+        let allPredictions = [];
+        let currentPage = 1;
+        let itemsPerPage = 25;
+
+        function switchTab(tab) {
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabs.forEach(t => t.classList.remove('active'));
+            tabContents.forEach(tc => tc.classList.remove('active'));
+
+            if (tab === 'single') {
+                tabs[0].classList.add('active');
+                document.getElementById('singleTab').classList.add('active');
+            } else {
+                tabs[1].classList.add('active');
+                document.getElementById('batchTab').classList.add('active');
+            }
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const loading = document.getElementById('batchLoading');
+            const resultsContainer = document.getElementById('resultsContainer');
+
+            loading.style.display = 'block';
+            resultsContainer.style.display = 'none';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/predict-csv', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'CSV prediction failed');
+                }
+
+                const data = await response.json();
+                allPredictions = data.predictions;
+                currentPage = 1;
+
+                displayResults();
+                resultsContainer.style.display = 'block';
+
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function displayResults() {
+            const tbody = document.getElementById('resultsBody');
+            tbody.innerHTML = '';
+
+            const startIdx = (currentPage - 1) * itemsPerPage;
+            const endIdx = Math.min(startIdx + itemsPerPage, allPredictions.length);
+            const pageData = allPredictions.slice(startIdx, endIdx);
+
+            pageData.forEach((row, idx) => {
+                const tr = document.createElement('tr');
+                const globalIdx = startIdx + idx + 1;
+
+                const predictionClass = row.prediction.includes('>') ? 'prediction-high' : 'prediction-low';
+
+                tr.innerHTML = `
+                    <td>${globalIdx}</td>
+                    <td>${row.age}</td>
+                    <td>${row.workclass}</td>
+                    <td>${row.education}</td>
+                    <td>${row.occupation}</td>
+                    <td>${row.gender}</td>
+                    <td>${row['hours-per-week']}</td>
+                    <td class="prediction-cell ${predictionClass}">${row.prediction}</td>
+                    <td>${row.confidence}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            updatePaginationInfo();
+        }
+
+        function updatePaginationInfo() {
+            const totalPages = Math.ceil(allPredictions.length / itemsPerPage);
+            const startIdx = (currentPage - 1) * itemsPerPage + 1;
+            const endIdx = Math.min(currentPage * itemsPerPage, allPredictions.length);
+
+            const info = `Showing ${startIdx}-${endIdx} of ${allPredictions.length} results (Page ${currentPage}/${totalPages})`;
+            document.getElementById('paginationInfo').textContent = info;
+            document.getElementById('paginationInfo2').textContent = info;
+
+            const prevButtons = document.querySelectorAll('.pagination-buttons button:first-child');
+            const nextButtons = document.querySelectorAll('.pagination-buttons button:last-child');
+
+            prevButtons.forEach(btn => btn.disabled = currentPage === 1);
+            nextButtons.forEach(btn => btn.disabled = currentPage === totalPages);
+        }
+
+        function previousPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                displayResults();
+            }
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(allPredictions.length / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                displayResults();
+            }
+        }
+
+        function changeItemsPerPage() {
+            itemsPerPage = parseInt(document.getElementById('itemsPerPage').value);
+            currentPage = 1;
+            displayResults();
+        }
     </script>
 </body>
 </html>

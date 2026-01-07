@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -7,6 +7,7 @@ import pandas as pd
 import joblib
 import numpy as np
 from typing import Literal
+import io
 
 app = FastAPI(title="Salary Prediction API")
 
@@ -115,6 +116,96 @@ async def predict(input_data: SalaryInput):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+
+@app.post("/predict-csv")
+async def predict_csv(file: UploadFile = File(...)):
+    try:
+        if not file.filename.endswith('.csv'):
+            raise HTTPException(status_code=400, detail="File must be a CSV file")
+
+        contents = await file.read()
+        df = pd.read_csv(io.BytesIO(contents))
+
+        required_columns = [
+            'age', 'workclass', 'education', 'educational-num', 'marital-status',
+            'occupation', 'relationship', 'race', 'gender', 'capital-gain',
+            'capital-loss', 'hours-per-week', 'native-country'
+        ]
+
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing required columns: {', '.join(missing_columns)}"
+            )
+
+        # Check for missing values in required columns
+        df = df[required_columns].copy()
+        if df.isnull().any().any():
+            # Fill missing values with defaults
+            df['age'] = df['age'].fillna(30)
+            df['educational-num'] = df['educational-num'].fillna(9)
+            df['capital-gain'] = df['capital-gain'].fillna(0)
+            df['capital-loss'] = df['capital-loss'].fillna(0)
+            df['hours-per-week'] = df['hours-per-week'].fillna(40)
+            df['gender'] = df['gender'].fillna('Male')
+            df['workclass'] = df['workclass'].fillna('Private')
+            df['marital-status'] = df['marital-status'].fillna('Never-married')
+            df['occupation'] = df['occupation'].fillna('Other-service')
+            df['education'] = df['education'].fillna('HS-grad')
+            df['race'] = df['race'].fillna('White')
+            df['relationship'] = df['relationship'].fillna('Not-in-family')
+            df['native-country'] = df['native-country'].fillna('United-States')
+
+        original_df = df.copy()
+
+        df['gender'] = label_encoder.transform(df['gender'])
+
+        df_encoded = pd.get_dummies(df, columns=[
+            'workclass', 'education', 'marital-status',
+            'occupation', 'race', 'relationship', 'native-country'
+        ], drop_first=True)
+
+        num_cols = ['age', 'educational-num', 'capital-gain', 'capital-loss', 'hours-per-week']
+        df_encoded[num_cols] = scaler.transform(df_encoded[num_cols])
+
+        for col in feature_columns:
+            if col not in df_encoded.columns:
+                df_encoded[col] = 0
+
+        df_encoded = df_encoded[feature_columns]
+
+        probas = model.predict_proba(df_encoded)[:, 1]
+        predictions = (probas >= 0.46).astype(int)
+
+        results = []
+        for idx, (pred, proba) in enumerate(zip(predictions, probas)):
+            result = original_df.iloc[idx].to_dict()
+
+            # Replace NaN/Inf values with None for JSON serialization
+            for key, value in result.items():
+                if isinstance(value, (float, np.floating)):
+                    if np.isnan(value) or np.isinf(value):
+                        result[key] = None
+                    else:
+                        result[key] = float(value)
+
+            # Ensure probability is valid
+            proba_value = float(proba)
+            if np.isnan(proba_value) or np.isinf(proba_value):
+                proba_value = 0.5  # default to 50% if invalid
+
+            result['prediction'] = "Income > $50K" if pred == 1 else "Income ≤ $50K"
+            result['probability'] = proba_value
+            result['confidence'] = f"{proba_value * 100:.2f}%" if pred == 1 else f"{(1 - proba_value) * 100:.2f}%"
+            results.append(result)
+
+        return {"predictions": results, "total_count": len(results)}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"CSV prediction error: {str(e)}")
 
 @app.get("/health")
 async def health():
